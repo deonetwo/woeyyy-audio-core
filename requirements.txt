@@ -1,0 +1,9 @@
+# Core Audio & DSP Engine (Mic Boost, Equalizer, Voice Changer, Soft Limiter)
+numpy>=1.24.0
+scipy>=1.10.0
+sounddevice>=0.4.6
+
+# Desktop GUI & Visual Styling (Refactoring UI Dark Mode)
+customtkinter>=6.0.0
+pillow>=10.0.0
+tkinter-icons[lucide]>=5.1.0
