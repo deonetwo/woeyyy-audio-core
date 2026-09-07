@@ -5,7 +5,7 @@ Desktop microphone booster, voice changer, and soundboard for Windows.
 ## Features
 
 - **Mic Booster**: Ultra-low-latency digital gain control (0 dB to +60 dB), parametric EQ profiles, and soft limiter.
-- **Voice Changer**: Low-latency pitch shifter (-12 to +12 semitones), ring modulation (Robot), bandpass filter (Radio), and presets (Deep Voice, Chipmunk, Robot, Radio, Monster).
+- **Voice Changer**: Low-latency pitch shifter (-12 to +12 semitones), formant shaping, ring modulation (Robot), bandpass filtering (Radio), and vocal presets (Woman Voice, Deep Voice, Chipmunk, Robot, Radio, Monster).
 - **Soundboard**: Polyphonic soundboard with built-in procedural clips and custom audio support. Hotkeys (`Ctrl+1` through `Ctrl+8`) with dedicated master toggle switch.
 - **Headphone Monitoring**: Zero-echo self-monitoring to hear your soundboard, voice effects, and microphone.
 - **Music & Auto-Ducking**: Intelligent auto-ducking that automatically lowers background audio when speaking.

@@ -247,6 +247,14 @@ class BiquadFilter:
             a1 = 2.0 * ((A - 1.0) - (A + 1.0) * cos_w0)
             a2 = (A + 1.0) - (A - 1.0) * cos_w0 - sqrt_A_2_alpha
 
+        elif self.filter_type == "lowpass":
+            b0 = (1.0 - cos_w0) / 2.0
+            b1 = 1.0 - cos_w0
+            b2 = (1.0 - cos_w0) / 2.0
+            a0 = 1.0 + alpha
+            a1 = -2.0 * cos_w0
+            a2 = 1.0 - alpha
+
         elif self.filter_type == "lowshelf":
             sqrt_A_2_alpha = 2.0 * math.sqrt(A) * alpha
             b0 = A * ((A + 1.0) - (A - 1.0) * cos_w0 + sqrt_A_2_alpha)

@@ -8,7 +8,7 @@ import time
 import unittest
 import numpy as np
 
-from engine.voice_changer import LowLatencyPitchShifter, VoiceChangerEngine
+from engine.voice_changer import FormantVocalTractModeler, LowLatencyPitchShifter, VoiceChangerEngine
 
 
 class TestVoiceChangerEngine(unittest.TestCase):
@@ -47,7 +47,7 @@ class TestVoiceChangerEngine(unittest.TestCase):
 
     def test_all_presets_execution(self):
         """Verify all presets process audio successfully without errors or NaNs."""
-        presets = ["deep_voice", "chipmunk", "robot", "radio", "monster", "custom"]
+        presets = ["woman", "deep_voice", "chipmunk", "robot", "radio", "monster", "custom"]
         chunk = np.random.uniform(-0.3, 0.3, (128, 2)).astype(np.float32)
 
         for p in presets:
@@ -58,6 +58,17 @@ class TestVoiceChangerEngine(unittest.TestCase):
             self.assertEqual(out.dtype, np.float32)
             self.assertFalse(np.isnan(out).any(), f"NaN found in preset {p}")
             self.assertFalse(np.isinf(out).any(), f"Inf found in preset {p}")
+
+    def test_woman_voice_preset(self):
+        """Verify Woman Voice preset applies +4 semitones pitch and formant filtering."""
+        self.vc.set_preset("woman")
+        self.assertEqual(self.vc.pitch_semitones, 4.0)
+        self.assertEqual(self.vc.mode, "woman")
+
+        chunk = np.random.uniform(-0.4, 0.4, (256, 2)).astype(np.float32)
+        out = self.vc.process(chunk)
+        self.assertEqual(out.shape, chunk.shape)
+        self.assertFalse(np.isnan(out).any())
 
     def test_dry_wet_mix(self):
         """Verify dry/wet blending ratio works as expected."""
@@ -147,6 +158,46 @@ class TestVoiceChangerEngine(unittest.TestCase):
         self.assertFalse(engine.vc_enabled)
         self.assertFalse(engine.voice_changer.enabled)
         self.assertEqual(engine.voice_changer.current_preset, "deep_voice")
+
+    def test_formant_vocal_tract_modeler(self):
+        """Verify FormantVocalTractModeler processing, parameter updates, and reset."""
+        modeler = FormantVocalTractModeler(sample_rate=self.sr)
+        modeler.set_parameters(formant_st=2.5, chest_cut=True, breathiness=0.4)
+        self.assertEqual(modeler.formant_semitones, 2.5)
+        self.assertTrue(modeler.chest_cut_enabled)
+        self.assertEqual(modeler.breathiness, 0.4)
+
+        chunk_2d = np.random.uniform(-0.3, 0.3, (128, 2)).astype(np.float32)
+        out = modeler.process(chunk_2d)
+        self.assertEqual(out.shape, chunk_2d.shape)
+        self.assertEqual(out.dtype, np.float32)
+        self.assertFalse(np.isnan(out).any())
+
+        # Test reset
+        modeler.reset()
+
+        # Inactive / flat check (0 semitones, no chest cut, no breathiness)
+        modeler.set_parameters(0.0, False, 0.0)
+        out_flat = modeler.process(chunk_2d)
+        np.testing.assert_array_almost_equal(out_flat, chunk_2d, decimal=3)
+
+    def test_voice_changer_formant_controls(self):
+        """Verify VoiceChangerEngine methods for controlling formant, chest cut, and breathiness."""
+        self.vc.set_preset("woman")
+        self.assertEqual(self.vc.formant_semitones, 2.2)
+        self.assertTrue(self.vc.chest_cut)
+        self.assertAlmostEqual(self.vc.breathiness, 0.35)
+
+        # Custom adjustment
+        self.vc.set_formant_semitones(4.0)
+        self.assertEqual(self.vc.formant_semitones, 4.0)
+        self.assertEqual(self.vc.current_preset, "custom")
+
+        self.vc.set_chest_cut(False)
+        self.assertFalse(self.vc.chest_cut)
+
+        self.vc.set_breathiness(0.5)
+        self.assertEqual(self.vc.breathiness, 0.5)
 
 
 if __name__ == "__main__":

@@ -258,6 +258,21 @@ class MicBoostEngine:
         with self._lock:
             self.voice_changer.set_pitch_semitones(semitones)
 
+    def set_voice_changer_formant(self, semitones: float):
+        """Set voice changer vocal tract formant shift in semitones (-12.0 to +12.0)."""
+        with self._lock:
+            self.voice_changer.set_formant_semitones(semitones)
+
+    def set_voice_changer_chest_cut(self, enabled: bool):
+        """Enable or disable male chest resonance suppression."""
+        with self._lock:
+            self.voice_changer.set_chest_cut(enabled)
+
+    def set_voice_changer_breathiness(self, breathiness: float):
+        """Set airy breathiness / vocal exciter ratio (0.0 to 1.0)."""
+        with self._lock:
+            self.voice_changer.set_breathiness(breathiness)
+
     def set_voice_changer_enabled(self, enabled: bool):
         """Toggle voice changer on or off."""
         with self._lock:

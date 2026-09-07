@@ -70,6 +70,7 @@ def load_lite_config() -> dict:
         "vc_enabled": False,
         "vc_preset": "deep_voice",
         "vc_pitch": -5.0,
+        "vc_formant": 0.0,
         "sb_volume": 0.8,
     }
     if os.path.exists(CONFIG_FILE):
@@ -531,6 +532,7 @@ class WoeyyyLiteApp(ctk.CTk):
 
         presets = [
             ("Normal", "bypass"),
+            ("Woman Voice", "woman"),
             ("Deep Voice", "deep_voice"),
             ("Chipmunk", "chipmunk"),
             ("Robot", "robot"),
@@ -582,6 +584,36 @@ class WoeyyyLiteApp(ctk.CTk):
             command=lambda: self._set_custom_pitch(0.0)
         )
         btn_reset_pitch.pack(side="right")
+
+        # Formant Semitone Fine Tuning Slider (Roland VT-4 Vocal Tract)
+        formant_row = ctk.CTkFrame(card, fg_color="transparent")
+        formant_row.pack(fill="x", padx=14, pady=(3, 1))
+
+        ctk.CTkLabel(formant_row, text="Formant Shift (Vocal Tract)", font=self.font_caption, text_color=TEXT_SECONDARY).pack(side="left")
+
+        current_formant = float(self.cfg.get("vc_formant", 0.0))
+        self.lbl_formant_val = ctk.CTkLabel(
+            formant_row, text=f"{current_formant:+.1f} st", font=self.font_readout, text_color=COLOR_EMERALD
+        )
+        self.lbl_formant_val.pack(side="right")
+
+        slider_f_box = ctk.CTkFrame(card, fg_color="transparent")
+        slider_f_box.pack(fill="x", padx=14, pady=(0, 6))
+
+        self.slider_formant = ctk.CTkSlider(
+            slider_f_box, from_=-12.0, to=12.0, number_of_steps=48,
+            progress_color=COLOR_EMERALD, button_color=COLOR_EMERALD,
+            command=self._on_formant_slider_changed, height=14
+        )
+        self.slider_formant.set(current_formant)
+        self.slider_formant.pack(side="left", fill="x", expand=True, padx=(0, 8))
+
+        btn_reset_formant = ctk.CTkButton(
+            slider_f_box, text="Reset", width=50, height=20, font=self.font_caption,
+            fg_color=BTN_SECONDARY, hover_color=BTN_SECONDARY_HOVER,
+            command=lambda: self._set_custom_formant(0.0)
+        )
+        btn_reset_formant.pack(side="right")
 
     def _build_soundboard_card(self):
         """Card 3: Soundboard."""
@@ -796,8 +828,24 @@ class WoeyyyLiteApp(ctk.CTk):
         self.cfg["vc_preset"] = preset_key
         if self.engine:
             self.engine.set_voice_changer_preset(preset_key)
-            self.slider_pitch.set(self.engine.voice_changer.pitch_semitones)
-            self.lbl_pitch_val.configure(text=f"{self.engine.voice_changer.pitch_semitones:+.1f} st")
+            pitch = self.engine.voice_changer.pitch_semitones
+            formant = self.engine.voice_changer.formant_semitones
+            self.slider_pitch.set(pitch)
+            self.lbl_pitch_val.configure(text=f"{pitch:+.1f} st")
+            self.slider_formant.set(formant)
+            self.lbl_formant_val.configure(text=f"{formant:+.1f} st")
+            self.cfg["vc_pitch"] = pitch
+            self.cfg["vc_formant"] = formant
+        else:
+            cfg = VoiceChangerEngine.PRESETS.get(preset_key, {})
+            pitch = cfg.get("pitch_semitones", 0.0)
+            formant = cfg.get("formant_semitones", 0.0)
+            self.slider_pitch.set(pitch)
+            self.lbl_pitch_val.configure(text=f"{pitch:+.1f} st")
+            self.slider_formant.set(formant)
+            self.lbl_formant_val.configure(text=f"{formant:+.1f} st")
+            self.cfg["vc_pitch"] = pitch
+            self.cfg["vc_formant"] = formant
 
         # Update button highlights
         for k, btn in self.vc_buttons.items():
@@ -816,6 +864,19 @@ class WoeyyyLiteApp(ctk.CTk):
     def _set_custom_pitch(self, semitones: float):
         self.slider_pitch.set(semitones)
         self._on_pitch_slider_changed(semitones)
+
+    def _on_formant_slider_changed(self, val: float):
+        semitones = round(val * 2.0) / 2.0
+        self.lbl_formant_val.configure(text=f"{semitones:+.1f} st")
+        self.cfg["vc_formant"] = semitones
+        self._persist_config()
+        if self.engine:
+            self.engine.set_voice_changer_formant(semitones)
+
+    def _set_custom_formant(self, semitones: float):
+        self.slider_formant.set(semitones)
+        self._on_formant_slider_changed(semitones)
+
 
     # =========================================================================
     # SOUNDBOARD CONTROLS

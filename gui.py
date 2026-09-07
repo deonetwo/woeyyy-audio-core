@@ -43,6 +43,9 @@ def load_app_config() -> dict:
         "vc_enabled": False,
         "vc_preset": "bypass",
         "vc_pitch": 0.0,
+        "vc_formant": 0.0,
+        "vc_chest_cut": False,
+        "vc_breathiness": 0.0,
         "vc_mix": 1.0,
         "sb_volume": 1.0,
         "sb_hotkeys_enabled": False,
@@ -790,6 +793,7 @@ class WoeyyyApp(ctk.CTk):
 
         presets = [
             ("Normal", "bypass", "Original mic audio"),
+            ("Woman Voice", "woman", "Pitch +4 st & formant EQ"),
             ("Deep Voice", "deep_voice", "Pitch -5 semitones"),
             ("Chipmunk", "chipmunk", "Pitch +8 semitones"),
             ("Robot", "robot", "65 Hz ring modulation"),
@@ -825,20 +829,21 @@ class WoeyyyApp(ctk.CTk):
                 text_color=TEXT_MUTED,
             ).pack(padx=6, pady=(0, 6))
 
-        # 3. Fine-Tuning Pitch Slider
+        # 3. Fine-Tuning Pitch & Formant Sliders (Roland VT-4 Vocal Tract)
         tuning_card = ctk.CTkFrame(tab, fg_color=BG_CARD_SUBTLE, corner_radius=RADIUS_CARD, border_width=1, border_color=BORDER_SUBTLE)
         tuning_card.pack(fill="x", padx=8, pady=4)
 
+        # --- Pitch Shift Row ---
         t_header = ctk.CTkFrame(tuning_card, fg_color="transparent")
-        t_header.pack(fill="x", padx=12, pady=(8, 2))
+        t_header.pack(fill="x", padx=12, pady=(6, 2))
 
-        ctk.CTkLabel(t_header, text="Pitch Shift", font=self.font_label, text_color=TEXT_PRIMARY).pack(side="left")
+        ctk.CTkLabel(t_header, text="Pitch Shift (Tone / F0)", font=self.font_label, text_color=TEXT_PRIMARY).pack(side="left")
         vc_pitch = float(self.cfg.get("vc_pitch", 0.0))
         self.lbl_vc_pitch = ctk.CTkLabel(t_header, text=f"{vc_pitch:+.1f} st", font=self.font_readout, text_color=COLOR_BLUE)
         self.lbl_vc_pitch.pack(side="right")
 
         pitch_slider_box = ctk.CTkFrame(tuning_card, fg_color="transparent")
-        pitch_slider_box.pack(fill="x", padx=12, pady=(2, 8))
+        pitch_slider_box.pack(fill="x", padx=12, pady=(1, 4))
 
         self.slider_vc_pitch = ctk.CTkSlider(
             pitch_slider_box,
@@ -853,17 +858,72 @@ class WoeyyyApp(ctk.CTk):
         self.slider_vc_pitch.set(vc_pitch)
         self.slider_vc_pitch.pack(side="left", fill="x", expand=True, padx=(0, 8))
 
-        btn_reset = ctk.CTkButton(
+        btn_reset_pitch = ctk.CTkButton(
             pitch_slider_box,
             text="Reset",
-            width=60,
-            height=24,
+            width=55,
+            height=22,
             font=self.font_caption,
             fg_color=BTN_SECONDARY,
             hover_color=BTN_SECONDARY_HOVER,
             command=lambda: self._set_custom_pitch(0.0),
         )
-        btn_reset.pack(side="right")
+        btn_reset_pitch.pack(side="right")
+
+        # --- Formant Shift Row (Vocal Tract Length) ---
+        f_header = ctk.CTkFrame(tuning_card, fg_color="transparent")
+        f_header.pack(fill="x", padx=12, pady=(4, 2))
+
+        ctk.CTkLabel(f_header, text="Formant Shift (Vocal Tract Character)", font=self.font_label, text_color=TEXT_PRIMARY).pack(side="left")
+        vc_formant = float(self.cfg.get("vc_formant", 0.0))
+        self.lbl_vc_formant = ctk.CTkLabel(f_header, text=f"{vc_formant:+.1f} st", font=self.font_readout, text_color=COLOR_EMERALD)
+        self.lbl_vc_formant.pack(side="right")
+
+        formant_slider_box = ctk.CTkFrame(tuning_card, fg_color="transparent")
+        formant_slider_box.pack(fill="x", padx=12, pady=(1, 4))
+
+        self.slider_vc_formant = ctk.CTkSlider(
+            formant_slider_box,
+            from_=-12.0,
+            to=12.0,
+            number_of_steps=48,
+            progress_color=COLOR_EMERALD,
+            button_color=COLOR_EMERALD,
+            command=self._on_vc_formant_changed,
+            height=16,
+        )
+        self.slider_vc_formant.set(vc_formant)
+        self.slider_vc_formant.pack(side="left", fill="x", expand=True, padx=(0, 8))
+
+        btn_reset_formant = ctk.CTkButton(
+            formant_slider_box,
+            text="Reset",
+            width=55,
+            height=22,
+            font=self.font_caption,
+            fg_color=BTN_SECONDARY,
+            hover_color=BTN_SECONDARY_HOVER,
+            command=lambda: self._set_custom_formant(0.0),
+        )
+        btn_reset_formant.pack(side="right")
+
+        # --- Tonal Enhancement Checkbox ---
+        enhance_box = ctk.CTkFrame(tuning_card, fg_color="transparent")
+        enhance_box.pack(fill="x", padx=12, pady=(2, 6))
+
+        self.chk_chest_cut = ctk.CTkCheckBox(
+            enhance_box,
+            text="Chest Cut (Eliminate deep male chest resonance for natural female voice)",
+            font=self.font_caption,
+            command=self._on_vc_chest_cut_toggled,
+            checkbox_width=16,
+            checkbox_height=16,
+        )
+        if bool(self.cfg.get("vc_chest_cut", False)):
+            self.chk_chest_cut.select()
+        else:
+            self.chk_chest_cut.deselect()
+        self.chk_chest_cut.pack(side="left")
 
     # =========================================================================
     # TAB 3: SOUNDBOARD
@@ -1115,15 +1175,27 @@ class WoeyyyApp(ctk.CTk):
         if self.engine:
             self.engine.set_voice_changer_preset(preset_key)
             pitch = self.engine.voice_changer.pitch_semitones
-            self.slider_vc_pitch.set(pitch)
-            self.lbl_vc_pitch.configure(text=f"{pitch:+.1f} st")
-            self.cfg["vc_pitch"] = pitch
+            formant = self.engine.voice_changer.formant_semitones
+            chest_cut = self.engine.voice_changer.chest_cut
         else:
-            preset_pitches = {"bypass": 0.0, "deep_voice": -5.0, "chipmunk": 8.0, "robot": 0.0, "radio": 0.0, "monster": -12.0}
-            pitch = preset_pitches.get(preset_key, 0.0)
-            self.slider_vc_pitch.set(pitch)
-            self.lbl_vc_pitch.configure(text=f"{pitch:+.1f} st")
-            self.cfg["vc_pitch"] = pitch
+            cfg = VoiceChangerEngine.PRESETS.get(preset_key, {})
+            pitch = cfg.get("pitch_semitones", 0.0)
+            formant = cfg.get("formant_semitones", 0.0)
+            chest_cut = cfg.get("chest_cut", False)
+
+        self.slider_vc_pitch.set(pitch)
+        self.lbl_vc_pitch.configure(text=f"{pitch:+.1f} st")
+        self.cfg["vc_pitch"] = pitch
+
+        self.slider_vc_formant.set(formant)
+        self.lbl_vc_formant.configure(text=f"{formant:+.1f} st")
+        self.cfg["vc_formant"] = formant
+
+        if chest_cut:
+            self.chk_chest_cut.select()
+        else:
+            self.chk_chest_cut.deselect()
+        self.cfg["vc_chest_cut"] = chest_cut
 
         self._persist_config()
 
@@ -1142,6 +1214,26 @@ class WoeyyyApp(ctk.CTk):
     def _set_custom_pitch(self, semitones: float):
         self.slider_vc_pitch.set(semitones)
         self._on_vc_pitch_changed(semitones)
+
+    def _on_vc_formant_changed(self, val: float):
+        semitones = round(val * 2.0) / 2.0
+        self.lbl_vc_formant.configure(text=f"{semitones:+.1f} st")
+        self.cfg["vc_formant"] = semitones
+        self._persist_config()
+        if self.engine:
+            self.engine.set_voice_changer_formant(semitones)
+
+    def _set_custom_formant(self, semitones: float):
+        self.slider_vc_formant.set(semitones)
+        self._on_vc_formant_changed(semitones)
+
+    def _on_vc_chest_cut_toggled(self):
+        enabled = self.chk_chest_cut.get() == 1
+        self.cfg["vc_chest_cut"] = enabled
+        self._persist_config()
+        if self.engine:
+            self.engine.set_voice_changer_chest_cut(enabled)
+
 
     def _on_vc_mix_changed(self, val: float):
         pct = int(val * 100)

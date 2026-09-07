@@ -147,7 +147,7 @@ def run_interactive_cli():
     print("   [+] / [-] : Adjust Boost Gain (+1 dB / -1 dB)")
     print("   []] / [[] : Big Gain Step   (+5 dB / -5 dB)")
     print("   [P]       : Cycle Sound Profile (Clear Voice / Comms / Warm / Flat)")
-    print("   [V]       : Cycle Voice Changer (Bypass / Deep / Chipmunk / Robot / Radio / Monster)")
+    print("   [V]       : Cycle Voice Changer (Bypass / Woman / Deep / Chipmunk / Robot / Radio / Monster)")
     print("   [L]       : Toggle Soft-Limiter ON / OFF")
     print("   [M]       : Toggle Mute ON / OFF")
     print("   [Q]       : Quit")
@@ -171,7 +171,7 @@ def run_interactive_cli():
     RESET = "\033[0m"
 
     profile_keys = list(SOUND_PROFILES.keys())
-    vc_presets = ["bypass", "deep_voice", "chipmunk", "robot", "radio", "monster"]
+    vc_presets = ["bypass", "woman", "deep_voice", "chipmunk", "robot", "radio", "monster"]
 
     try:
         while True:
